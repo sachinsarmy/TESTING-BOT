@@ -1,71 +1,111 @@
 import os
+import logging
 from telegram import Update
-from telegram.ext import Application, ContextTypes
+from telegram.ext import (
+    Application,
+    ContextTypes,
+    CommandHandler,
+    MessageHandler,
+    ChatJoinRequestHandler,
+    filters,
+)
 
-try:
-    from telegram.ext import ChatJoinRequestHandler
-except ImportError:
-    raise ImportError("ChatJoinRequestHandler is only available in python-telegram-bot v20+. Please upgrade your library.")
-
-FILE_PATH = "/file/RAJA_VIP_NUMBER_HACK.zip"
+# ================= CONFIG =================
+BOT_TOKEN = "YOUR_NEW_TOKEN_HERE"
+ADMIN_ID = 123456789  # <-- PUT YOUR TELEGRAM USER ID HERE
+APK_PATH = "PANNEL HACK V-1.apk"
 VOICE_PATH = "VOICEHACK.ogg"
+# ==========================================
 
+logging.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+
+# Store users in memory
+users = set()
+
+
+# ================= START COMMAND =================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    users.add(user_id)
+    await update.message.reply_text("Bot Activated ✅")
+
+
+# ================= JOIN REQUEST =================
 async def approve_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    request = getattr(update, "chat_join_request", None)
-    if request is None:
-        return  # Ignore updates that are not join requests
+    request = update.chat_join_request
+    if not request:
+        return
 
     user = request.from_user
+    chat_id = request.chat.id
 
-    # Approve the user
-    await request.approve()
-
-    # Build welcome message with username
     welcome_message = f"""
-👋🏻 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 {user.mention_html()} 𝐁𝐑𝐎𝐓𝐇𝐄𝐑
- 𝐓𝐎 𝗢𝗨𝗥 - 𝐕𝟑_𝐏𝐀𝐍𝐄𝐋  𝐏𝐑𝐈𝐕𝐀𝐓𝐄  𝐇𝐀𝐂𝐊 𝐒𝐄𝐑𝐕𝐄𝐑 🤑💵
-  
-    """
+👋🏻 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 {user.mention_html()}
+"""
 
-    # Send welcome message
-    await context.bot.send_message(chat_id=user.id, text=welcome_message, parse_mode="HTML")
+    await context.bot.send_message(
+        chat_id=user.id,
+        text=welcome_message,
+        parse_mode="HTML",
+    )
 
-    # Send file
-    if os.path.exists(FILE_PATH):
-        with open(FILE_PATH, "rb") as f:
-            await context.bot.send_document(chat_id=user.id, document=f, caption="""
-📂 ☆𝟏𝟎𝟎% 𝐍𝐔𝐌𝐁𝐄𝐑 𝐇𝐀𝐂𝐊💸
+    if os.path.exists(APK_PATH):
+        with open(APK_PATH, "rb") as apk:
+            await context.bot.send_document(
+                chat_id=user.id,
+                document=apk,
+                caption="📂 Premium File"
+            )
 
-(केवल प्रीमियम उपयोगकर्ताओं के लिए)💎
-
-(100% नुकसान की भरपाई की गारंटी)🧬
-
-♻सहायता के लिए @RAJ_A_G_E_N_T
-
-🔴हैक का उपयोग कैसे करें💱
-https://t.me/rajaindiaprediction/54
-
-☆ 🚀""")
-    else:
-        await context.bot.send_message(chat_id=user.id, text="Sorry, the requested file is not available.")
-
-    # Send voice message (if available)
     if os.path.exists(VOICE_PATH):
-        with open(VOICE_PATH, "rb") as v:
-            await context.bot.send_voice(chat_id=user.id, voice=v, caption="""
-🎙 सदस्य 9X गुना लाभ का प्रमाण 👇🏻 -
+        with open(VOICE_PATH, "rb") as voice:
+            await context.bot.send_voice(
+                chat_id=user.id,
+                voice=voice,
+                caption="🎙 Proof"
+            )
 
-https://t.me/rajaindiaprediction/54
 
-लगातार नंबर पे नंबर जीतना 🤑♻👑
-""")
-    else:
-        await context.bot.send_message(chat_id=user.id, text="Sorry, the requested voice message is not available.")
+# ================= BROADCAST =================
+async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
 
+    if not update.message.reply_to_message:
+        await update.message.reply_text("Reply to a message to broadcast.")
+        return
+
+    msg = update.message.reply_to_message
+    success = 0
+    failed = 0
+
+    for user_id in users.copy():
+        try:
+            await msg.copy(chat_id=user_id)
+            success += 1
+        except:
+            failed += 1
+
+    await update.message.reply_text(
+        f"Broadcast Complete ✅\n\nSuccess: {success}\nFailed: {failed}"
+    )
+
+
+# ================= MAIN =================
 def main():
-    app = Application.builder().token("8157438383:AAF2hzj6X0CJVDnYOLcR8YUYoUM0r0KKtl0").build()
+    app = Application.builder().token(BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("broadcast", broadcast))
     app.add_handler(ChatJoinRequestHandler(approve_and_send))
-    app.run_polling()
+
+    app.run_polling(
+        allowed_updates=["message", "chat_join_request"]
+    )
+
 
 if __name__ == "__main__":
     main()
