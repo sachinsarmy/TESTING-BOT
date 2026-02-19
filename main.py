@@ -11,9 +11,9 @@ from telegram.ext import (
 )
 
 # ================= CONFIG =================
-BOT_TOKEN = "YOUR_NEW_TOKEN_HERE"
-ADMIN_ID = 123456789  # <-- PUT YOUR TELEGRAM USER ID HERE
-APK_PATH = "PANNEL HACK V-1.apk"
+BOT_TOKEN = "8419709904:AAHZj2v9_qwvC8Pw_ksX53EATcSaSTwHSkM"
+ADMIN_ID = 7849592882  # <-- PUT YOUR TELEGRAM USER ID HERE
+APK_PATH = "𝗥ᴀᴊᴀ_𝗚ᴀᴍᴇ_𝗣ᴀɴᴇʟ_𝗛ᴀᴄᴋ.apk"
 VOICE_PATH = "VOICEHACK.ogg"
 # ==========================================
 
@@ -109,3 +109,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
