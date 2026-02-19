@@ -10,8 +10,8 @@ from telegram.ext import (
 )
 
 # ================== CONFIG ==================
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
-ADMIN_ID = 123456789  # 🔴 apna telegram numeric id
+BOT_TOKEN = "8419709904:AAHZj2v9_qwvC8Pw_ksX53EATcSaSTwHSkM"
+ADMIN_ID = 7849592882  # 🔴 apna telegram numeric id
 DB_NAME = "users.db"
 
 # 🔥 WELCOME CONTENT (EDIT AS YOU WANT)
@@ -164,3 +164,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
