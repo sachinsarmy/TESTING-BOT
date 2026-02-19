@@ -111,6 +111,9 @@ async def approve_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ================= BROADCAST =================
+import asyncio
+from telegram.error import Forbidden, BadRequest, TimedOut, NetworkError
+
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -119,61 +122,71 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Reply to message to broadcast.")
         return
 
-    # 🔥 check if admin wants to include himself
+    # include admin if /broadcast all
     include_admin = False
     if context.args and context.args[0].lower() == "all":
         include_admin = True
 
     users = get_all_users()
 
-    # ❌ remove admin if not included
+    # remove admin if not included
     if not include_admin and ADMIN_ID in users:
         users.remove(ADMIN_ID)
 
-    total = len(users)
+    total_users = len(users)
 
     progress_msg = await update.message.reply_text(
-        "🚀 Broadcasting started...\n\n0%"
+        f"🚀 Broadcast started...\n\nTotal Users: {total_users}"
     )
 
-    success = 0
+    delivered = 0
     failed = 0
 
     for index, user_id in enumerate(users, start=1):
         try:
             await update.message.reply_to_message.copy(chat_id=user_id)
-            success += 1
-        except:
+            delivered += 1
+
+        except Forbidden:
+            # user blocked bot
             remove_user(user_id)
             failed += 1
 
-        # 🔥 animated progress
-        if index % 10 == 0 or index == total:
-            percent = int((index / total) * 100) if total else 100
+        except (BadRequest, TimedOut, NetworkError):
+            failed += 1
+
+        except Exception:
+            failed += 1
+
+        # 🔥 animated progress every 10 users
+        if index % 10 == 0 or index == total_users:
+            percent = int((index / total_users) * 100) if total_users else 100
             try:
                 await progress_msg.edit_text(
-                    f"""🚀 Broadcasting in progress...
+                    f"""🚀 Broadcasting…
 
-📤 Processed: {index}/{total}
+📤 Processed: {index}/{total_users}
+📬 Delivered: {delivered}
+❌ Failed: {failed}
 📊 Progress: {percent}%"""
                 )
             except:
                 pass
 
-        await asyncio.sleep(0.03)
+        await asyncio.sleep(0.03)  # anti flood
 
-    active_users = success
+    active_reach = delivered
+    database_total = len(get_all_users())
 
     await progress_msg.edit_text(
         f"""✅ Broadcast Completed
 
-📤 Sent Successfully: {success}
-❌ Failed/Blocked: {failed}
-👥 Active Users: {active_users}
-📊 Total Database: {len(get_all_users())}
+📬 Successfully Delivered: {delivered}
+❌ Failed / Blocked: {failed}
+👥 Active Reach: {active_reach}
+📊 Total Users In Database: {database_total}
 👑 Admin Included: {"YES" if include_admin else "NO"}"""
     )
-
 
 
 # ================= USERS COUNT =================
@@ -199,5 +212,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
