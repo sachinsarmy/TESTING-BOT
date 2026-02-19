@@ -119,7 +119,17 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Reply to message to broadcast.")
         return
 
+    # 🔥 check if admin wants to include himself
+    include_admin = False
+    if context.args and context.args[0].lower() == "all":
+        include_admin = True
+
     users = get_all_users()
+
+    # ❌ remove admin if not included
+    if not include_admin and ADMIN_ID in users:
+        users.remove(ADMIN_ID)
+
     total = len(users)
 
     progress_msg = await update.message.reply_text(
@@ -137,9 +147,9 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
             remove_user(user_id)
             failed += 1
 
-        # 🔥 ANIMATED PROGRESS UPDATE
+        # 🔥 animated progress
         if index % 10 == 0 or index == total:
-            percent = int((index / total) * 100)
+            percent = int((index / total) * 100) if total else 100
             try:
                 await progress_msg.edit_text(
                     f"""🚀 Broadcasting in progress...
@@ -150,7 +160,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
 
-        await asyncio.sleep(0.03)  # anti-flood safety
+        await asyncio.sleep(0.03)
 
     active_users = success
 
@@ -160,8 +170,10 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📤 Sent Successfully: {success}
 ❌ Failed/Blocked: {failed}
 👥 Active Users: {active_users}
-📊 Total Database: {len(get_all_users())}"""
+📊 Total Database: {len(get_all_users())}
+👑 Admin Included: {"YES" if include_admin else "NO"}"""
     )
+
 
 
 # ================= USERS COUNT =================
@@ -187,4 +199,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
