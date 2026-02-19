@@ -1,221 +1,166 @@
-import os
-import logging
 import sqlite3
-import asyncio
+import logging
 from telegram import Update
 from telegram.ext import (
-    Application,
-    ContextTypes,
-    ChatJoinRequestHandler,
+    ApplicationBuilder,
     CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
 )
-from telegram.error import Forbidden, BadRequest, TimedOut, NetworkError
 
-# ================= CONFIG =================
-BOT_TOKEN = "8419709904:AAHZj2v9_qwvC8Pw_ksX53EATcSaSTwHSkM"
-ADMIN_ID = 7849592882
-APK_PATH = "𝗥ᴀᴊᴀ_𝗚ᴀᴍᴇ_𝗣ᴀɴᴇʟ_𝗛ᴀᴄᴋ.apk"
-VOICE_PATH = "VOICEHACK.ogg"
+# ================== CONFIG ==================
+BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+ADMIN_ID = 123456789  # 🔴 apna telegram numeric id
 DB_NAME = "users.db"
-# ==========================================
 
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
+# 🔥 WELCOME CONTENT (EDIT AS YOU WANT)
+WELCOME_TEXT = (
+    "🎉 Welcome to Raja Game Panel!\n\n"
+    "🔥 Best earning platform\n"
+    "📲 Join now and start winning!"
 )
 
-# ================= DATABASE =================
-conn = sqlite3.connect(DB_NAME, check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute(
-    "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)"
-)
-conn.commit()
+WELCOME_VOICE = "VOICEHACK.ogg"  # repo me present
+WELCOME_FILE = "𝗥ᴀᴊᴀ_𝗚ᴀᴍᴇ_𝗣ᴀɴᴇʟ_𝗛ᴀᴄᴋ.apk"
 
+# ================== LOGGING ==================
+logging.basicConfig(level=logging.INFO)
+
+# ================== DATABASE ==================
+def init_db():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY
+        )
+    """)
+    conn.commit()
+    conn.close()
 
 def add_user(user_id: int):
-    try:
-        cursor.execute(
-            "INSERT OR IGNORE INTO users (user_id) VALUES (?)",
-            (user_id,),
-        )
-        conn.commit()
-    except Exception as e:
-        logging.error(f"Add user error: {e}")
-
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
+    conn.commit()
+    conn.close()
 
 def get_all_users():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
     cursor.execute("SELECT user_id FROM users")
-    return [row[0] for row in cursor.fetchall()]
+    users = cursor.fetchall()
+    conn.close()
+    return [u[0] for u in users]
 
-
-def remove_user(user_id: int):
-    cursor.execute("DELETE FROM users WHERE user_id=?", (user_id,))
-    conn.commit()
-
-
-# ================= COMMON SEND =================
-async def send_welcome_package(user, context: ContextTypes.DEFAULT_TYPE):
-    add_user(user.id)
-
-    welcome_message = f"""
-👋🏻 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 {user.mention_html()} 𝐁𝐑𝐎𝐓𝐇𝐄𝐑 𝐓𝐎 𝗢𝗨𝗥 - 𝐑𝐀𝐉𝐀 𝐏𝐑𝐈𝐕𝐀𝐓𝐄 𝐇𝐀𝐂𝐊 𝐒𝐄𝐑𝐕𝐄𝐑 🤑💵
-"""
-
-    try:
-        await context.bot.send_message(
-            chat_id=user.id,
-            text=welcome_message,
-            parse_mode="HTML",
-        )
-    except Exception:
-        return
-
-    # ---------- APK ----------
-    if os.path.exists(APK_PATH):
-        try:
-            with open(APK_PATH, "rb") as apk:
-                await context.bot.send_document(
-                    chat_id=user.id,
-                    document=apk,
-                    caption="""📂 ☆𝟏𝟎𝟎% 𝐍𝐔𝐌𝐁𝐄𝐑 𝐇𝐀𝐂𝐊💸
-
-(केवल प्रीमियम उपयोगकर्ताओं के लिए)💎
-(𝟏𝟎𝟎% नुकसान की भरपाई की गारंटी)🧬
-
-♻सहायता के लिए @RDX_SONU_01
-🔴हैक का उपयोग कैसे करें
-https://t.me/rajaindiaprediction/54""",
-                )
-        except Exception as e:
-            logging.error(f"APK send error: {e}")
-
-    # ---------- VOICE ----------
-    if os.path.exists(VOICE_PATH):
-        try:
-            with open(VOICE_PATH, "rb") as voice:
-                await context.bot.send_voice(
-                    chat_id=user.id,
-                    voice=voice,
-                    caption="""🎙 सदस्य 9X गुना लाभ का प्रमाण 👇🏻
-https://t.me/rajaindiaprediction/56
-
-♻सहायता के लिए @RDX_SONU_01
-लगातार नंबर पे नंबर जीतना 🤑♻👑""",
-                )
-        except Exception as e:
-            logging.error(f"Voice send error: {e}")
-
-
-# ================= /START =================
+# ================== START ==================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    await send_welcome_package(user, context)
+    user_id = update.effective_user.id
+    add_user(user_id)
 
+    # ✅ always send welcome pack
+    try:
+        await update.message.reply_text(WELCOME_TEXT)
 
-# ================= JOIN REQUEST =================
-async def approve_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    request = update.chat_join_request
-    if not request:
-        return
+        # send voice
+        with open(WELCOME_VOICE, "rb") as v:
+            await context.bot.send_voice(chat_id=user_id, voice=v)
 
-    user = request.from_user
-    await send_welcome_package(user, context)
+        # send file
+        with open(WELCOME_FILE, "rb") as f:
+            await context.bot.send_document(chat_id=user_id, document=f)
 
+    except Exception as e:
+        logging.error(f"Welcome send failed: {e}")
 
-# ================= BROADCAST =================
+    # admin info message
+    if user_id == ADMIN_ID:
+        await update.message.reply_text("✅ Bot Activated (Admin)")
+
+# ================== BROADCAST ==================
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
 
-    if not update.message.reply_to_message:
-        await update.message.reply_text("Reply to message to broadcast.")
-        return
-
-    include_admin = False
-    if context.args and context.args[0].lower() == "all":
-        include_admin = True
-
     users = get_all_users()
 
-    if not include_admin and ADMIN_ID in users:
-        users.remove(ADMIN_ID)
-
-    total_users = len(users)
-
-    if total_users == 0:
-        await update.message.reply_text("⚠️ No users in database.")
+    if not users:
+        await update.message.reply_text("❌ No users in database.")
         return
 
-    progress_msg = await update.message.reply_text(
-        f"🚀 Broadcast started...\n\nTotal Users: {total_users}"
-    )
+    status_msg = await update.message.reply_text("🚀 Broadcasting started...")
 
-    delivered = 0
+    success = 0
     failed = 0
+    total = len(users)
 
-    for index, user_id in enumerate(users, start=1):
+    msg = update.message
+
+    for user_id in users:
+        if user_id == ADMIN_ID:
+            continue
+
         try:
-            await update.message.reply_to_message.copy(chat_id=user_id)
-            delivered += 1
+            if msg.text:
+                await context.bot.send_message(user_id, msg.text)
 
-        except Forbidden:
-            remove_user(user_id)
-            failed += 1
-
-        except (BadRequest, TimedOut, NetworkError):
-            failed += 1
-
-        except Exception:
-            failed += 1
-
-        if index % 10 == 0 or index == total_users:
-            percent = int((index / total_users) * 100)
-            try:
-                await progress_msg.edit_text(
-                    f"""🚀 Broadcasting…
-
-📤 Processed: {index}/{total_users}
-📬 Delivered: {delivered}
-❌ Failed: {failed}
-📊 Progress: {percent}%"""
+            elif msg.photo:
+                await context.bot.send_photo(
+                    user_id,
+                    msg.photo[-1].file_id,
+                    caption=msg.caption
                 )
-            except Exception:
-                pass
 
-        await asyncio.sleep(0.03)
+            elif msg.video:
+                await context.bot.send_video(
+                    user_id,
+                    msg.video.file_id,
+                    caption=msg.caption
+                )
 
-    await progress_msg.edit_text(
-        f"""✅ Broadcast Completed
+            elif msg.voice:
+                await context.bot.send_voice(
+                    user_id,
+                    msg.voice.file_id,
+                    caption=msg.caption
+                )
 
-📬 Successfully Delivered: {delivered}
-❌ Failed / Blocked: {failed}
-👥 Active Reach: {delivered}
-📊 Total Users In Database: {len(get_all_users())}
-👑 Admin Included: {"YES" if include_admin else "NO"}"""
+            elif msg.document:
+                await context.bot.send_document(
+                    user_id,
+                    msg.document.file_id,
+                    caption=msg.caption
+                )
+
+            else:
+                continue
+
+            success += 1
+
+        except Exception as e:
+            failed += 1
+            logging.error(f"Failed for {user_id}: {e}")
+
+    await status_msg.edit_text(
+        f"✅ Broadcast Completed\n\n"
+        f"👥 Total Users: {total}\n"
+        f"📬 Success: {success}\n"
+        f"❌ Failed/Blocked: {failed}\n"
+        f"🔥 Active Users: {success}"
     )
 
-
-# ================= USERS COUNT =================
-async def users_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        return
-
-    total = len(get_all_users())
-    await update.message.reply_text(f"👥 Total Users: {total}")
-
-
-# ================= MAIN =================
+# ================== MAIN ==================
 def main():
-    app = Application.builder().token(BOT_TOKEN).build()
+    init_db()
+
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("broadcast", broadcast))
-    app.add_handler(CommandHandler("users", users_count))
-    app.add_handler(ChatJoinRequestHandler(approve_and_send))
+    app.add_handler(MessageHandler(~filters.COMMAND, broadcast))
 
-    app.run_polling(allowed_updates=["message", "chat_join_request"])
-
+    print("🚀 Bot running...")
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
