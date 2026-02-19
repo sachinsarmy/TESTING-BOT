@@ -138,6 +138,7 @@ async def approve_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ================= BROADCAST =================
+# ================= BROADCAST =================
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -150,9 +151,16 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args and context.args[0].lower() == "all":
         include_admin = True
 
-    users = get_all_users()
+    # ✅ SAFE USERS LIST (NO INDENT ERROR)
+    all_users = get_all_users()
+    users = []
 
-   users = [u for u in get_all_users() if include_admin or u != ADMIN_ID]
+    for u in all_users:
+        if include_admin:
+            users.append(u)
+        else:
+            if u != ADMIN_ID:
+                users.append(u)
 
     total_users = len(users)
 
@@ -179,9 +187,11 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except (BadRequest, TimedOut, NetworkError):
             failed += 1
 
-        except Exception:
+        except Exception as e:
+            logging.error(f"Broadcast error {user_id}: {e}")
             failed += 1
 
+        # progress animation
         if index % 10 == 0 or index == total_users:
             percent = int((index / total_users) * 100)
             try:
@@ -208,7 +218,6 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👑 Admin Included: {"YES" if include_admin else "NO"}"""
     )
 
-
 # ================= USERS COUNT =================
 async def users_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -232,4 +241,5 @@ def main():
 
 if _name_ == "_main_":
     main()
+
 
