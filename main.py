@@ -239,7 +239,8 @@ def main():
     app.run_polling(allowed_updates=["message", "chat_join_request"])
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
+
 
 
