@@ -25,34 +25,45 @@ logging.basicConfig(
 )
 
 # ================= DATABASE =================
-conn = sqlite3.connect(DB_NAME, check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute(
-    "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)"
-)
-conn.commit()
+def get_conn():
+    return sqlite3.connect(DB_NAME)
 
 
 def add_user(user_id: int):
     try:
-        cursor.execute(
-            "INSERT OR IGNORE INTO users (user_id) VALUES (?)",
-            (user_id,),
-        )
-        conn.commit()
+        with get_conn() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)"
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO users (user_id) VALUES (?)",
+                (user_id,),
+            )
+            conn.commit()
     except Exception as e:
         logging.error(f"Add user error: {e}")
 
 
 def get_all_users():
-    cursor.execute("SELECT user_id FROM users")
-    return [row[0] for row in cursor.fetchall()]
+    try:
+        with get_conn() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)"
+            )
+            cursor = conn.execute("SELECT user_id FROM users")
+            return [row[0] for row in cursor.fetchall()]
+    except Exception as e:
+        logging.error(f"Get users error: {e}")
+        return []
 
 
 def remove_user(user_id: int):
-    cursor.execute("DELETE FROM users WHERE user_id=?", (user_id,))
-    conn.commit()
-
+    try:
+        with get_conn() as conn:
+            conn.execute("DELETE FROM users WHERE user_id=?", (user_id,))
+            conn.commit()
+    except Exception as e:
+        logging.error(f"Remove user error: {e}")
 
 # ================= COMMON SEND =================
 async def send_welcome_package(user, context: ContextTypes.DEFAULT_TYPE):
@@ -110,6 +121,9 @@ https://t.me/rajaindiaprediction/56
 # ================= /START =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    add_user(user.id)
+    logging.info(f"User added: {user.id}")
+
     await send_welcome_package(user, context)
 
 
@@ -138,8 +152,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     users = get_all_users()
 
-    if not include_admin and ADMIN_ID in users:
-        users.remove(ADMIN_ID)
+   users = [u for u in get_all_users() if include_admin or u != ADMIN_ID]
 
     total_users = len(users)
 
@@ -219,3 +232,4 @@ def main():
 
 if _name_ == "_main_":
     main()
+
