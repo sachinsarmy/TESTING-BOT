@@ -1,3 +1,4 @@
+
 import os
 import logging
 import sqlite3
@@ -26,9 +27,7 @@ logging.basicConfig(
 # ================= DATABASE =================
 conn = sqlite3.connect(DB_NAME, check_same_thread=False)
 cursor = conn.cursor()
-cursor.execute(
-    "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)"
-)
+cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)")
 conn.commit()
 
 
@@ -77,7 +76,7 @@ async def send_welcome_package(user, context: ContextTypes.DEFAULT_TYPE):
 
 ♻सहायता के लिए @RDX_SONU_01
 🔴हैक का उपयोग कैसे करें
-https://t.me/rajaindiaprediction/54"""
+https://t.me/rajaindiaprediction/54""",
             )
 
     # ---------- VOICE ----------
@@ -90,7 +89,7 @@ https://t.me/rajaindiaprediction/54"""
 https://t.me/rajaindiaprediction/56
 
 ♻सहायता के लिए @RDX_SONU_01
-लगातार नंबर पे नंबर जीतना 🤑♻👑"""
+लगातार नंबर पे नंबर जीतना 🤑♻👑""",
             )
 
 
@@ -113,6 +112,7 @@ async def approve_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ================= BROADCAST =================
 import asyncio
 from telegram.error import Forbidden, BadRequest, TimedOut, NetworkError
+
 
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -212,5 +212,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
