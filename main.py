@@ -1,4 +1,3 @@
-
 import os
 import logging
 import sqlite3
@@ -10,10 +9,11 @@ from telegram.ext import (
     ChatJoinRequestHandler,
     CommandHandler,
 )
+from telegram.error import Forbidden, BadRequest, TimedOut, NetworkError
 
 # ================= CONFIG =================
 BOT_TOKEN = "8419709904:AAHZj2v9_qwvC8Pw_ksX53EATcSaSTwHSkM"
-ADMIN_ID = 78495928824  # ← your telegram numeric id
+ADMIN_ID = 7849592882
 APK_PATH = "𝗥ᴀᴊᴀ_𝗚ᴀᴍᴇ_𝗣ᴀɴᴇʟ_𝗛ᴀᴄᴋ.apk"
 VOICE_PATH = "VOICEHACK.ogg"
 DB_NAME = "users.db"
@@ -27,16 +27,21 @@ logging.basicConfig(
 # ================= DATABASE =================
 conn = sqlite3.connect(DB_NAME, check_same_thread=False)
 cursor = conn.cursor()
-cursor.execute("CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)")
+cursor.execute(
+    "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY)"
+)
 conn.commit()
 
 
 def add_user(user_id: int):
-    cursor.execute(
-        "INSERT OR IGNORE INTO users (user_id) VALUES (?)",
-        (user_id,),
-    )
-    conn.commit()
+    try:
+        cursor.execute(
+            "INSERT OR IGNORE INTO users (user_id) VALUES (?)",
+            (user_id,),
+        )
+        conn.commit()
+    except Exception as e:
+        logging.error(f"Add user error: {e}")
 
 
 def get_all_users():
@@ -57,19 +62,23 @@ async def send_welcome_package(user, context: ContextTypes.DEFAULT_TYPE):
 👋🏻 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 {user.mention_html()} 𝐁𝐑𝐎𝐓𝐇𝐄𝐑 𝐓𝐎 𝗢𝗨𝗥 - 𝐑𝐀𝐉𝐀 𝐏𝐑𝐈𝐕𝐀𝐓𝐄 𝐇𝐀𝐂𝐊 𝐒𝐄𝐑𝐕𝐄𝐑 🤑💵
 """
 
-    await context.bot.send_message(
-        chat_id=user.id,
-        text=welcome_message,
-        parse_mode="HTML",
-    )
+    try:
+        await context.bot.send_message(
+            chat_id=user.id,
+            text=welcome_message,
+            parse_mode="HTML",
+        )
+    except Exception:
+        return
 
     # ---------- APK ----------
     if os.path.exists(APK_PATH):
-        with open(APK_PATH, "rb") as apk:
-            await context.bot.send_document(
-                chat_id=user.id,
-                document=apk,
-                caption="""📂 ☆𝟏𝟎𝟎% 𝐍𝐔𝐌𝐁𝐄𝐑 𝐇𝐀𝐂𝐊💸
+        try:
+            with open(APK_PATH, "rb") as apk:
+                await context.bot.send_document(
+                    chat_id=user.id,
+                    document=apk,
+                    caption="""📂 ☆𝟏𝟎𝟎% 𝐍𝐔𝐌𝐁𝐄𝐑 𝐇𝐀𝐂𝐊💸
 
 (केवल प्रीमियम उपयोगकर्ताओं के लिए)💎
 (𝟏𝟎𝟎% नुकसान की भरपाई की गारंटी)🧬
@@ -77,20 +86,25 @@ async def send_welcome_package(user, context: ContextTypes.DEFAULT_TYPE):
 ♻सहायता के लिए @RDX_SONU_01
 🔴हैक का उपयोग कैसे करें
 https://t.me/rajaindiaprediction/54""",
-            )
+                )
+        except Exception as e:
+            logging.error(f"APK send error: {e}")
 
     # ---------- VOICE ----------
     if os.path.exists(VOICE_PATH):
-        with open(VOICE_PATH, "rb") as voice:
-            await context.bot.send_voice(
-                chat_id=user.id,
-                voice=voice,
-                caption="""🎙 सदस्य 9X गुना लाभ का प्रमाण 👇🏻
+        try:
+            with open(VOICE_PATH, "rb") as voice:
+                await context.bot.send_voice(
+                    chat_id=user.id,
+                    voice=voice,
+                    caption="""🎙 सदस्य 9X गुना लाभ का प्रमाण 👇🏻
 https://t.me/rajaindiaprediction/56
 
 ♻सहायता के लिए @RDX_SONU_01
 लगातार नंबर पे नंबर जीतना 🤑♻👑""",
-            )
+                )
+        except Exception as e:
+            logging.error(f"Voice send error: {e}")
 
 
 # ================= /START =================
@@ -110,10 +124,6 @@ async def approve_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # ================= BROADCAST =================
-import asyncio
-from telegram.error import Forbidden, BadRequest, TimedOut, NetworkError
-
-
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -122,18 +132,20 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Reply to message to broadcast.")
         return
 
-    # include admin if /broadcast all
     include_admin = False
     if context.args and context.args[0].lower() == "all":
         include_admin = True
 
     users = get_all_users()
 
-    # remove admin if not included
     if not include_admin and ADMIN_ID in users:
         users.remove(ADMIN_ID)
 
     total_users = len(users)
+
+    if total_users == 0:
+        await update.message.reply_text("⚠️ No users in database.")
+        return
 
     progress_msg = await update.message.reply_text(
         f"🚀 Broadcast started...\n\nTotal Users: {total_users}"
@@ -148,7 +160,6 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
             delivered += 1
 
         except Forbidden:
-            # user blocked bot
             remove_user(user_id)
             failed += 1
 
@@ -158,9 +169,8 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             failed += 1
 
-        # 🔥 animated progress every 10 users
         if index % 10 == 0 or index == total_users:
-            percent = int((index / total_users) * 100) if total_users else 100
+            percent = int((index / total_users) * 100)
             try:
                 await progress_msg.edit_text(
                     f"""🚀 Broadcasting…
@@ -170,21 +180,18 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ❌ Failed: {failed}
 📊 Progress: {percent}%"""
                 )
-            except:
+            except Exception:
                 pass
 
-        await asyncio.sleep(0.03)  # anti flood
-
-    active_reach = delivered
-    database_total = len(get_all_users())
+        await asyncio.sleep(0.03)
 
     await progress_msg.edit_text(
         f"""✅ Broadcast Completed
 
 📬 Successfully Delivered: {delivered}
 ❌ Failed / Blocked: {failed}
-👥 Active Reach: {active_reach}
-📊 Total Users In Database: {database_total}
+👥 Active Reach: {delivered}
+📊 Total Users In Database: {len(get_all_users())}
 👑 Admin Included: {"YES" if include_admin else "NO"}"""
     )
 
@@ -212,4 +219,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
